@@ -7,6 +7,8 @@ var indexRouter = require('./routes/index');
 var moviesRouter = require('./routes/movies');
 
 var app = express();
+const PORT = process.env.PORT || 3000;
+const knex = require('knex')(require('./knexfile.js')[process.env.NODE_ENV]);
 
 app.use(logger('dev'));
 app.use(express.json());

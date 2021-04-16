@@ -1,43 +1,44 @@
+const { query } = require('express');
 var express = require('express');
 var router = express.Router();
-var movies = require('../data/mockDB.json')
+var movies = require('../data/mockDB.json');
+const PORT = process.env.PORT || 3000;
+const knex = require('knex')(require('../knexfile.js')[process.env.NODE_ENV]);
 
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  //req.query is an object
-  if(req.query){
-    if(req.query.title){
-      return searchTitle(req, res)
-    }else{
-      res.status(400).send('Invalid titleQuery supplied')
-    }
+router.get('/', (req, res, next) => {
+  if(req.query.title){
+    knex
+    .from('movies')
+    .select('*')
+    .where('title', 'ilike', `%${req.query.title}%`)   
+    .then(data => {
+      if(!data[0].id){
+        throw new Error
+      }
+      res.status(200).json(data)
+    })
+    .catch(err =>
+      res.status(404).json({
+        message: 'The data you are looking for could not be found. Please try again'
+      }))
   }
-  res.status(200).json(movies)
+  else{
+    knex
+    .select('*')
+    .from('movies')
+    .then(data => {
+      if(!data[0].id){
+        throw new Error
+      }
+      res.status(200).json(data)
+    })
+    .catch(err =>
+      res.status(404).json({
+        message: 'The data you are looking for could not be found. Please try again'
+      }))
+  }
 });
-
-/*Search handler*/
-function searchTitle(req, res) {
- let searchByTitle = []
- 
- //REFACTOR TO KNEX SYNTAX ONCE WE IMPLEMENT THE DB
-  /* SQL QUERY
-  SELECT * FROM MOVIES
-  WHERE title='QUERY TITLE"
-  */
-  movies.forEach(element =>{
-    
-    if(element.title.toLowerCase().includes(req.query.title.toLowerCase())){
-      searchByTitle.push(element)
-    }
-  })
-  // error handle for no results
-  if(searchByTitle.length == 0){
-    res.status(404).send('Your query string returned no results.')
-  }
-  //if the search yielded results
-  res.status(200).json(searchByTitle)
-}
 
 //REFACTOR TO KNEX SYNYAX ONCE WE IMPLEMENT THE DB
   /* SQL QUERY
@@ -45,24 +46,38 @@ function searchTitle(req, res) {
   WHERE ID='PARAMS ID"
   */
 router.get('/:id', (req, res, next) =>{
-  const movieId = req.params.id;
+  const movieId = parseInt(req.params.id);
   
+  knex
+    .select('*')
+    .from('movies')
+    .where({id: movieId})
+    .then(data => {
+      if(!data[0].id){
+        throw new Error
+      }
+      res.status(200).json(data)
+    })
+    .catch(err =>
+      res.status(404).json({
+        message: 'The data you are looking for could not be found. Please try again'
+      }))
+  })
   
-  if(isNaN(Number(movieId)) === true){
-    res.status(400).send('Invalid ID type');
-  }
-
-  const foundMovie = movies.find(movie => movie.id === parseInt(movieId));
-  if(!foundMovie){
-    res.status(404).send(`No movie with ID of ${req.params.id} found`)
-  }
-  res.status(200).json(foundMovie);
-  
-});
 
 router.post('/', (req, res, next) => {
   const newMovie = req.body;
-  res.status(200).json(newMovie)
+  knex('movies')
+  .insert(newMovie)
+  .then((data)=> res.status(200).json(newMovie))
+})
+
+router.delete('/:id', (req, res, next) => {
+  const movieId = parseInt(req.params.id);
+  knex('movies')
+  .where({id: 7})
+  .del()
+  .then((data)=> res.status(200).json(`Movie ${movieId} has been deleted.`))
 })
 
 module.exports = router;
